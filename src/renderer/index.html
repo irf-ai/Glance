@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob: data:; object-src 'none'; base-uri 'none'"
+    />
+    <title>Glance</title>
+    <link rel="stylesheet" href="app://glance/pdfjs/web/pdf_viewer.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="toolbar" id="toolbar">
+      <div class="group">
+        <button class="tool" id="sidebarBtn" data-icon="sidebar" title="Show or hide sidebar (Ctrl+Alt+S)" aria-label="Sidebar" aria-pressed="true"></button>
+        <button class="tool" id="openBtn" data-icon="open" title="Open (Ctrl+O)" aria-label="Open"></button>
+      </div>
+      <div class="doc-title" id="docTitle">
+        <span class="doc-name">Glance</span>
+        <span class="doc-meta" id="docMeta"></span>
+      </div>
+      <div class="group needs-doc">
+        <button class="tool" id="zoomOutBtn" data-icon="zoom-out" title="Zoom out (Ctrl+-)" aria-label="Zoom out"></button>
+        <button class="zoom-label" id="zoomLabel" title="Actual size (Ctrl+0)">100%</button>
+        <button class="tool" id="zoomInBtn" data-icon="zoom-in" title="Zoom in (Ctrl+=)" aria-label="Zoom in"></button>
+        <button class="tool" id="fitBtn" data-icon="fit" title="Zoom to fit (Ctrl+9)" aria-label="Zoom to fit"></button>
+      </div>
+      <div class="group needs-doc">
+        <button class="tool" id="rotateLeftBtn" data-icon="rotate-left" title="Rotate left (Ctrl+L)" aria-label="Rotate left"></button>
+        <button class="tool" id="rotateRightBtn" data-icon="rotate-right" title="Rotate right (Ctrl+R)" aria-label="Rotate right"></button>
+        <button class="tool" id="markupBtn" data-icon="markup" title="Show markup toolbar (Ctrl+Shift+A)" aria-label="Markup" aria-pressed="false"></button>
+      </div>
+      <div class="search needs-pdf" id="searchBox">
+        <span class="search-icon" data-icon="search"></span>
+        <input id="searchInput" type="search" placeholder="Search" spellcheck="false" aria-label="Search document" />
+        <span class="search-count" id="searchCount"></span>
+        <button class="tool small" id="searchPrevBtn" data-icon="chevron-up" title="Previous match (Shift+Enter)" aria-label="Previous match"></button>
+        <button class="tool small" id="searchNextBtn" data-icon="chevron-down" title="Next match (Enter)" aria-label="Next match"></button>
+      </div>
+      <div class="group menu-anchor">
+        <button class="tool labeled" id="toolsBtn" data-icon="tools" title="PDF tools" aria-haspopup="menu" aria-expanded="false">Tools</button>
+        <div class="menu" id="toolsMenu" role="menu" hidden>
+          <button role="menuitem" data-action="combine" data-icon="combine">Combine files into PDF…</button>
+          <button role="menuitem" data-action="split" data-icon="split" class="needs-pdf">Split PDF…</button>
+          <button role="menuitem" data-action="compress" data-icon="compress" class="needs-pdf">Compress PDF…</button>
+          <button role="menuitem" data-action="crop-pages" data-icon="crop" class="needs-pdf">Crop pages</button>
+          <button role="menuitem" data-action="compare" data-icon="compare" class="needs-pdf">Compare with another PDF…</button>
+          <button role="menuitem" data-action="protect" data-icon="lock" class="needs-pdf">Protect with password…</button>
+          <div class="menu-separator needs-doc"></div>
+          <button role="menuitem" data-action="signature" data-icon="signature" class="needs-doc">Add signature…</button>
+          <button role="menuitem" data-action="add-image" data-icon="image" class="needs-doc">Add image…</button>
+          <div class="menu-separator needs-pdf"></div>
+          <button role="menuitem" data-action="export-pages" data-icon="images" class="needs-pdf">Export pages as images…</button>
+          <button role="menuitem" data-action="export-text" data-icon="file-text" class="needs-pdf">Export as Markdown or text…</button>
+          <div class="menu-separator needs-doc"></div>
+          <button role="menuitem" data-action="print" data-icon="print" class="needs-doc">Print…</button>
+          <button role="menuitem" data-action="presentation" data-icon="present" class="needs-doc">Presentation</button>
+          <button role="menuitem" data-action="properties" data-icon="info" class="needs-doc">Document properties…</button>
+        </div>
+      </div>
+      <div class="group needs-doc">
+        <button class="tool" id="printBtn" data-icon="print" title="Print (Ctrl+P)" aria-label="Print"></button>
+        <button class="tool primary" id="exportBtn" data-icon="export" title="Export (Ctrl+Shift+S)">Export</button>
+      </div>
+    </header>
+
+    <div class="markupbar" id="markupBar" hidden>
+      <div class="group" role="radiogroup" aria-label="Markup tools">
+        <button class="tool" data-tool="select" data-icon="select" title="Select text and markup (Esc)" aria-label="Select"></button>
+        <button class="tool" data-tool="highlight" data-icon="highlight" title="Highlight — select text first, or drag a box" aria-label="Highlight"></button>
+        <button class="tool" data-tool="rect" data-icon="rect" title="Rectangle (Shift for square)" aria-label="Rectangle"></button>
+        <button class="tool" data-tool="ellipse" data-icon="ellipse" title="Oval (Shift for circle)" aria-label="Oval"></button>
+        <button class="tool" data-tool="line" data-icon="line" title="Line (Shift snaps to 45°)" aria-label="Line"></button>
+        <button class="tool" data-tool="arrow" data-icon="arrow" title="Arrow (Shift snaps to 45°)" aria-label="Arrow"></button>
+        <button class="tool" data-tool="pen" data-icon="pen" title="Sketch" aria-label="Sketch"></button>
+        <button class="tool" data-tool="text" data-icon="text" title="Text box" aria-label="Text"></button>
+        <button class="tool" data-tool="note" data-icon="note" title="Sticky note" aria-label="Sticky note"></button>
+        <button class="tool" data-tool="crop" data-icon="crop" title="Select an area to crop" aria-label="Crop selection"></button>
+      </div>
+      <div class="separator"></div>
+      <div class="group" role="radiogroup" aria-label="Fill and sign">
+        <button class="tool" data-tool="check" data-icon="mark-check" title="Check mark (click to place)" aria-label="Check mark"></button>
+        <button class="tool" data-tool="cross" data-icon="mark-cross" title="Cross mark (click to place)" aria-label="Cross mark"></button>
+        <button class="tool" data-tool="dot" data-icon="mark-dot" title="Dot (click to place)" aria-label="Dot"></button>
+        <button class="tool" data-tool="date" data-icon="calendar" title="Today's date (click to place)" aria-label="Date"></button>
+      </div>
+      <button class="tool labeled" id="applyCropBtn" data-icon="check" title="Crop to selection (Ctrl+K or Enter)" hidden>Crop</button>
+      <button class="tool labeled needs-pdf" id="applyCropAllBtn" title="Apply the same crop to every page" hidden>Crop all pages</button>
+      <div class="separator needs-image"></div>
+      <div class="group needs-image">
+        <button class="tool" id="flipHBtn" data-icon="flip-h" title="Flip horizontal" aria-label="Flip horizontal"></button>
+        <button class="tool" id="flipVBtn" data-icon="flip-v" title="Flip vertical" aria-label="Flip vertical"></button>
+        <button class="tool" id="resizeBtn" data-icon="resize" title="Adjust size…" aria-label="Adjust size"></button>
+      </div>
+      <div class="separator"></div>
+      <div class="group style-controls">
+        <label class="swatch" title="Shape and text colour">
+          <input type="color" id="colorInput" value="#e5322d" aria-label="Colour" />
+        </label>
+        <label class="swatch highlight-swatch" title="Highlight colour">
+          <input type="color" id="highlightColorInput" value="#ffd400" aria-label="Highlight colour" />
+        </label>
+        <select id="strokeSelect" title="Line thickness" aria-label="Line thickness">
+          <option value="1">1 px</option>
+          <option value="2">2 px</option>
+          <option value="3" selected>3 px</option>
+          <option value="5">5 px</option>
+          <option value="8">8 px</option>
+          <option value="12">12 px</option>
+        </select>
+        <select id="fontSelect" title="Text size" aria-label="Text size">
+          <option value="12">12 pt</option>
+          <option value="14">14 pt</option>
+          <option value="18" selected>18 pt</option>
+          <option value="24">24 pt</option>
+          <option value="36">36 pt</option>
+          <option value="48">48 pt</option>
+        </select>
+      </div>
+      <div class="separator"></div>
+      <div class="group">
+        <button class="tool" id="undoBtn" data-icon="undo" title="Undo (Ctrl+Z)" aria-label="Undo"></button>
+        <button class="tool" id="redoBtn" data-icon="redo" title="Redo (Ctrl+Y)" aria-label="Redo"></button>
+        <button class="tool" id="deleteBtn" data-icon="trash" title="Delete selected markup (Del)" aria-label="Delete selected markup"></button>
+      </div>
+    </div>
+
+    <main class="workspace">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-tabs" role="tablist" aria-label="Sidebar">
+          <button role="tab" class="sidebar-tab active" data-panel="pages" title="Pages">Pages</button>
+          <button role="tab" class="sidebar-tab" data-panel="comments" title="Comments and markup">Comments <span class="tab-count" id="commentCount"></span></button>
+          <button role="tab" class="sidebar-tab needs-pdf" data-panel="attachments" title="Attachments" aria-label="Attachments" data-icon="paperclip"><span class="tab-count" id="attachmentCount"></span></button>
+        </div>
+        <div class="sidebar-list" id="sidebarList" data-panel-body="pages"></div>
+        <div class="sidebar-panel" id="commentsPanel" data-panel-body="comments" hidden></div>
+        <div class="sidebar-panel" id="attachmentsPanel" data-panel-body="attachments" hidden></div>
+        <div class="sidebar-actions needs-pdf" data-panel-body="pages">
+          <button class="tool small" id="pageRotateLeftBtn" data-icon="rotate-left" title="Rotate page left" aria-label="Rotate page left"></button>
+          <button class="tool small" id="pageRotateRightBtn" data-icon="rotate-right" title="Rotate page right" aria-label="Rotate page right"></button>
+          <button class="tool small" id="pageDeleteBtn" data-icon="trash" title="Delete page" aria-label="Delete page"></button>
+          <button class="tool small" id="insertPdfBtn" data-icon="file-plus" title="Insert pages from another PDF after this page" aria-label="Insert pages from PDF"></button>
+        </div>
+      </aside>
+      <section class="viewer" id="viewer" tabindex="-1">
+        <div class="empty" id="emptyState">
+          <div class="empty-card">
+            <div class="empty-icon" data-icon="document"></div>
+            <h1>Open a PDF or image</h1>
+            <p>Drop a file here, or choose one to view, mark up and convert.</p>
+            <div class="empty-actions">
+              <button class="button primary" id="emptyOpenBtn">Choose file…</button>
+              <button class="button" id="emptyCombineBtn">Combine files into PDF…</button>
+            </div>
+            <p class="hint">PDF · PNG · JPEG · GIF · BMP · WebP · AVIF</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="statusbar">
+      <span id="statusLeft"></span>
+      <label class="page-box needs-pdf" title="Go to page (Ctrl+G)">Page
+        <input type="text" inputmode="numeric" id="pageInput" aria-label="Page number" spellcheck="false" />
+        <span id="pageTotal"></span></label>
+      <span class="lock-badge" id="lockBadge" hidden></span>
+      <span id="statusMessage" class="status-message" role="status"></span>
+      <div class="view-toggles needs-pdf">
+        <button class="tool small" id="singleBtn" data-icon="single-page" title="Single page (Ctrl+1)" aria-label="Single page" aria-pressed="true"></button>
+        <button class="tool small" id="spreadBtn" data-icon="spread" title="Two pages (Ctrl+2)" aria-label="Two pages" aria-pressed="false"></button>
+        <button class="tool small" id="darkBtn" data-icon="moon" title="Dark pages (Ctrl+Shift+D)" aria-label="Dark pages" aria-pressed="false"></button>
+      </div>
+      <span id="statusRight"></span>
+    </footer>
+
+    <div class="presentation" id="presentation" hidden tabindex="-1">
+      <canvas id="presentationCanvas"></canvas>
+      <div class="presentation-hint" id="presentationHint">← → to change page · Esc to exit</div>
+    </div>
+
+    <dialog id="exportDialog" class="dialog">
+      <form method="dialog">
+        <h2>Export</h2>
+        <label class="field">
+          <span>Format</span>
+          <select id="exportFormat"></select>
+        </label>
+        <label class="field" id="qualityField">
+          <span>Quality <output id="qualityValue">90%</output></span>
+          <input type="range" id="exportQuality" min="10" max="100" value="90" />
+        </label>
+        <label class="field" id="resolutionField" hidden>
+          <span>Resolution</span>
+          <select id="exportResolution">
+            <option value="72">72 dpi</option>
+            <option value="150" selected>150 dpi</option>
+            <option value="300">300 dpi</option>
+          </select>
+        </label>
+        <p class="dialog-note" id="exportNote"></p>
+        <div class="dialog-actions">
+          <button class="button" value="cancel" formnovalidate>Cancel</button>
+          <button class="button primary" value="ok" id="exportConfirm">Save…</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="resizeDialog" class="dialog">
+      <form method="dialog">
+        <h2>Adjust size</h2>
+        <div class="field-row">
+          <label class="field">
+            <span>Width (px)</span>
+            <input type="number" id="resizeWidth" min="1" max="30000" required />
+          </label>
+          <label class="field">
+            <span>Height (px)</span>
+            <input type="number" id="resizeHeight" min="1" max="30000" required />
+          </label>
+        </div>
+        <label class="field">
+          <span>Scale</span>
+          <select id="resizePreset">
+            <option value="">Custom</option>
+            <option value="0.25">25%</option>
+            <option value="0.5">50%</option>
+            <option value="0.75">75%</option>
+            <option value="1">100%</option>
+            <option value="2">200%</option>
+          </select>
+        </label>
+        <label class="checkbox"><input type="checkbox" id="resizeLock" checked /> Keep proportions</label>
+        <p class="dialog-note" id="resizeNote"></p>
+        <div class="dialog-actions">
+          <button class="button" value="cancel" formnovalidate>Cancel</button>
+          <button class="button primary" value="ok">Resize</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>
