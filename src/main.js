@@ -6,6 +6,12 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const diagnostics = require("./diagnostics");
 
+const IS_MAC = process.platform === "darwin";
+// The legacy macOS build (macOS 10.13–12) runs on Electron 26 / Chromium 116,
+// which lacks features the modern pdf.js build needs; it gets pdf.js's legacy
+// build, which carries its own polyfills, at the same URLs.
+const LEGACY_PDFJS = Number(process.versions.chrome.split(".")[0]) < 128;
+
 const APP_ROOT = path.join(__dirname, "..");
 // Only these folders are reachable through the app:// scheme.
 const SERVED_ROOTS = [
@@ -56,7 +62,8 @@ function resolveServedPath(url) {
   const relative = decodeURIComponent(pathname).replace(/^\/+/, "");
   const [first, ...rest] = relative.split("/");
   let candidate;
-  if (first === "pdfjs") candidate = path.join(SERVED_ROOTS[1], ...rest);
+  if (first === "pdfjs" && LEGACY_PDFJS && rest[0] === "build") candidate = path.join(SERVED_ROOTS[1], "legacy", ...rest);
+  else if (first === "pdfjs") candidate = path.join(SERVED_ROOTS[1], ...rest);
   else if (first === "pdf-lib") candidate = path.join(SERVED_ROOTS[2], ...rest);
   else if (first === "pdf-crypto") candidate = path.join(SERVED_ROOTS[3], ...rest);
   else candidate = path.join(SERVED_ROOTS[0], relative);
@@ -132,10 +139,14 @@ function sendMenu(action) {
   return () => BrowserWindow.getFocusedWindow()?.webContents.send("menu", action);
 }
 
+// macOS has no menu mnemonics; "&File" would show the ampersand.
+const mnemonic = (label) => (IS_MAC ? label.replace("&", "") : label);
+
 function buildMenu() {
+  const about = { label: "About Glance", click: () => diagnostics.showAbout(BrowserWindow.getFocusedWindow()) };
   const template = [
     {
-      label: "&File",
+      label: mnemonic("&File"),
       submenu: [
         { label: "New Window", accelerator: "CmdOrCtrl+N", click: () => createWindow() },
         {
@@ -157,14 +168,15 @@ function buildMenu() {
         { label: "Document Properties…", accelerator: "CmdOrCtrl+D", click: sendMenu("properties") },
         { type: "separator" },
         { label: "Close Window", accelerator: "CmdOrCtrl+W", role: "close" },
-        { role: "quit" },
+        // On macOS, Quit lives in the Glance menu.
+        ...(IS_MAC ? [] : [{ role: "quit" }]),
       ],
     },
     {
-      label: "&Edit",
+      label: mnemonic("&Edit"),
       submenu: [
         { label: "Undo", accelerator: "CmdOrCtrl+Z", click: sendMenu("undo") },
-        { label: "Redo", accelerator: "CmdOrCtrl+Y", click: sendMenu("redo") },
+        { label: "Redo", accelerator: IS_MAC ? "Cmd+Shift+Z" : "CmdOrCtrl+Y", click: sendMenu("redo") },
         { type: "separator" },
         { role: "cut" },
         { role: "copy" },
@@ -178,7 +190,7 @@ function buildMenu() {
       ],
     },
     {
-      label: "&View",
+      label: mnemonic("&View"),
       submenu: [
         { label: "Toggle Sidebar", accelerator: "CmdOrCtrl+Alt+S", click: sendMenu("toggle-sidebar") },
         { label: "Show Markup Toolbar", accelerator: "CmdOrCtrl+Shift+A", click: sendMenu("toggle-markup") },
@@ -198,7 +210,8 @@ function buildMenu() {
       ],
     },
     {
-      label: "&Help",
+      label: mnemonic("&Help"),
+      role: "help",
       submenu: [
         { label: "Keyboard Shortcuts", accelerator: "F1", click: sendMenu("shortcuts") },
         { type: "separator" },
@@ -207,12 +220,11 @@ function buildMenu() {
           label: diagnostics.isSafeGraphics() ? "Restart with Normal Graphics" : "Restart with Safe Graphics",
           click: () => diagnostics.restartWithSafeGraphics(!diagnostics.isSafeGraphics()),
         },
-        { type: "separator" },
-        { label: "About Glance", click: () => diagnostics.showAbout(BrowserWindow.getFocusedWindow()) },
+        ...(IS_MAC ? [] : [{ type: "separator" }, about]),
       ],
     },
     {
-      label: "&Tools",
+      label: mnemonic("&Tools"),
       submenu: [
         { label: "Rotate Left", accelerator: "CmdOrCtrl+L", click: sendMenu("rotate-left") },
         { label: "Rotate Right", accelerator: "CmdOrCtrl+R", click: sendMenu("rotate-right") },
@@ -232,6 +244,25 @@ function buildMenu() {
       ],
     },
   ];
+  if (IS_MAC) {
+    // macOS order: Glance, File, Edit, View, Tools, Window, Help.
+    const help = template.splice(3, 1)[0];
+    template.unshift({
+      label: app.name,
+      submenu: [
+        about,
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    });
+    template.push({ role: "windowMenu" }, help);
+  }
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
@@ -257,7 +288,7 @@ function registerIpc() {
 
   ipcMain.on("app:set-fullscreen", (event, on) => windowOf(event)?.setFullScreen(Boolean(on)));
 
-  // Prints pre-rendered page images through the Windows print dialog.
+  // Lists printers for Glance's own print dialog.
   ipcMain.handle("print:printers", async (event) => {
     const printers = await event.sender.getPrintersAsync();
     return printers.map((p) => ({ name: p.name, displayName: p.displayName || p.name, isDefault: Boolean(p.isDefault) }));
@@ -265,7 +296,7 @@ function registerIpc() {
 
   // Prints pre-rendered page images. With a deviceName it prints straight to that
   // printer (Glance's own print dialog already asked); otherwise it shows the
-  // Windows print dialog, owned by the Glance window so it opens in front of it.
+  // system print dialog, owned by the Glance window so it opens in front of it.
   ipcMain.handle("print:pages", async (event, { title, pages, landscape, deviceName, copies = 1, color = true }) => {
     const owner = windowOf(event);
     const dir = await fs.mkdtemp(path.join(app.getPath("temp"), "glance-print-"));
@@ -364,12 +395,19 @@ function registerIpc() {
   // ---- Clipboard images ----
 
   // Electron 44's clipboard follows the W3C async API: ClipboardItem + Blob.
+  // Electron 26 (the legacy macOS build) only has writeImage / readImage.
   ipcMain.handle("clipboard:write-image", async (_event, pngBytes) => {
-    if (nativeImage.createFromBuffer(Buffer.from(pngBytes)).isEmpty()) throw new Error("Couldn't copy the image.");
+    const image = nativeImage.createFromBuffer(Buffer.from(pngBytes));
+    if (image.isEmpty()) throw new Error("Couldn't copy the image.");
+    if (typeof ClipboardItem !== "function") return clipboard.writeImage(image);
     await clipboard.write([new ClipboardItem({ "image/png": new Blob([pngBytes], { type: "image/png" }) })]);
   });
 
   ipcMain.handle("clipboard:read-image", async () => {
+    if (typeof ClipboardItem !== "function") {
+      const image = clipboard.readImage();
+      return image.isEmpty() ? null : new Uint8Array(image.toPNG());
+    }
     for (const item of await clipboard.read()) {
       const type = item.types.find((t) => t.startsWith("image/"));
       if (type) return new Uint8Array(await (await item.getType(type)).arrayBuffer());
@@ -431,6 +469,8 @@ function registerIpc() {
     const win = windowOf(event);
     win.glance.document = filePath;
     win.setTitle(filePath ? `${path.basename(filePath)} — Glance` : "Glance");
+    // macOS shows the file's icon in the title bar (Cmd-click it for the folder path).
+    if (IS_MAC) win.setRepresentedFilename(filePath ?? "");
     if (filePath) app.addRecentDocument(filePath);
   });
 
@@ -439,6 +479,8 @@ function registerIpc() {
     win.glance.dirty = Boolean(dirty);
     const name = win.glance.document ? path.basename(win.glance.document) : "Glance";
     win.setTitle(`${dirty ? "• " : ""}${name}${win.glance.document ? " — Glance" : ""}`);
+    // macOS's own unsaved-changes dot in the close button.
+    if (IS_MAC) win.setDocumentEdited(win.glance.dirty);
   });
 }
 
@@ -455,6 +497,18 @@ if (!app.requestSingleInstanceLock()) {
     else BrowserWindow.getAllWindows()[0]?.focus();
   });
 
+  // macOS hands over files (double-click, Open With, drop on the Dock icon)
+  // through this event instead of the command line. It can fire before the
+  // app is ready, so early files wait until the first window is made.
+  let launched = false;
+  const launchFiles = [];
+  app.on("open-file", (event, filePath) => {
+    event.preventDefault();
+    if (!isSupported(filePath)) return;
+    if (launched) openFile(filePath);
+    else launchFiles.push(filePath);
+  });
+
   app.whenReady().then(() => {
     protocol.handle("app", (request) => {
       const filePath = resolveServedPath(request.url);
@@ -463,8 +517,17 @@ if (!app.requestSingleInstanceLock()) {
     });
     registerIpc();
     buildMenu();
-    createWindow(fileFromArgs(process.argv));
+    const [first = fileFromArgs(process.argv), ...rest] = launchFiles;
+    createWindow(first);
+    rest.forEach((filePath) => createWindow(filePath));
+    launched = true;
   });
 
-  app.on("window-all-closed", () => app.quit());
+  // macOS apps stay running with no windows; clicking the Dock icon opens one.
+  app.on("window-all-closed", () => {
+    if (!IS_MAC) app.quit();
+  });
+  app.on("activate", () => {
+    if (launched && BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
 }

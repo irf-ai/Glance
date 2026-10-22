@@ -5,6 +5,7 @@ import { hasDroppable, installDragProvider, readDrop, resolveSource, startDrag }
 import { DRAW_TOOLS } from "./markup.js";
 import { renderAttachments, renderComments, showPanel } from "./panels.js";
 import { PdfDocument } from "./pdf-doc.js";
+import { IS_MAC, localizeShortcuts } from "./platform.js";
 import { scrollWithin } from "./scroll.js";
 import {
   addImageDialog,
@@ -951,6 +952,7 @@ const actions = {
 
 function wire() {
   applyIcons();
+  localizeShortcuts(document);
   window.glance.onMenu((action) => actions[action]?.());
   window.glance.onOpenFile((filePath) => openPath(filePath));
 
@@ -1057,7 +1059,8 @@ function wire() {
   viewer.addEventListener(
     "wheel",
     (e) => {
-      if (!e.ctrlKey || !app.doc) return;
+      // A trackpad pinch arrives as Ctrl+wheel on every platform; Macs also zoom with ⌘+scroll.
+      if (!(e.ctrlKey || (IS_MAC && e.metaKey)) || !app.doc) return;
       e.preventDefault();
       setZoom(app.zoom * Math.exp(-e.deltaY * 0.002));
     },

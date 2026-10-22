@@ -1,5 +1,25 @@
 # Glance patch notes
 
+## Unreleased — macOS
+
+### New
+- **Glance runs on macOS.** Two Mac builds:
+  - macOS 13 Ventura and later, for Apple Silicon and Intel Macs (Electron 44).
+  - A legacy build for Intel Macs on macOS 10.13 High Sierra to 12 Monterey
+    (Electron 26). Electron 26 no longer gets security fixes, so use it only
+    on Macs that can't update to macOS 13.
+- On a Mac, Glance behaves like a Mac app: a Glance menu with About, Hide and
+  Quit, a Window menu, files opened from Finder or the Dock, the app staying
+  open with no windows, ⇧⌘Z for Redo, the unsaved-changes dot in the close
+  button, and the file icon in the title bar.
+- Shortcut hints and the Keyboard Shortcuts list show Mac keys (⌘ ⌥ ⇧) on a
+  Mac. Dialogs mention Finder and the macOS print dialog. Pinch or ⌘+scroll
+  zooms.
+- Typed signatures use handwriting fonts that come with macOS (Snell
+  Roundhand, Bradley Hand, Apple Chancery, Noteworthy, Brush Script).
+
+Nothing changes on Windows.
+
 ## 1.3.1 — Printing and reliability fixes
 
 ### Fixed

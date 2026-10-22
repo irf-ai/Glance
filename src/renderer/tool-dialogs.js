@@ -3,6 +3,7 @@ import { hasDroppable, readDrop, resolveSource } from "./dnd.js";
 import { icon } from "./icons.js";
 import { encryptPdf } from "./pdf-crypto.js";
 import { PdfDocument } from "./pdf-doc.js";
+import { FILE_MANAGER, HANDWRITING_FONTS, OS_NAME, keyLabel } from "./platform.js";
 import { printDocument } from "./viewing.js";
 import {
   combine,
@@ -84,7 +85,7 @@ export async function combineDialog(ctx) {
     const added = paths.filter((p) => kindOf(p) !== "page").map((filePath) => ({ path: filePath, name: fileName(filePath), kind: kindOf(filePath) }));
     items.splice(at, 0, ...added);
   };
-  // Drops from Explorer or from other Glance windows (pages, images, whole documents).
+  // Drops from Explorer / Finder or from other Glance windows (pages, images, whole documents).
   const addDropped = (sources, at = items.length) => {
     const added = sources.map((source) =>
       source.path ? { path: source.path, name: source.label, kind: kindOf(source.path) } : { source, name: source.label, kind: kindOf(source.label) },
@@ -97,7 +98,7 @@ export async function combineDialog(ctx) {
     ok: "Combine…",
     wide: true,
     body: `
-      <p class="dialog-note">PDFs keep all their pages. Each image becomes one page. Drop files from Explorer, or pages and images from other Glance windows, into the list. Drag items or use the arrows to set the order.</p>
+      <p class="dialog-note">PDFs keep all their pages. Each image becomes one page. Drop files from ${FILE_MANAGER}, or pages and images from other Glance windows, into the list. Drag items or use the arrows to set the order.</p>
       <ol class="file-list" data-list></ol>
       <div class="dialog-buttons">
         <button type="button" class="button" data-add>${icon("file-plus")} Add files…</button>
@@ -431,11 +432,7 @@ export async function signatureDialog(ctx) {
         <label class="field"><span>Your name</span><input type="text" data-name placeholder="Type your name" /></label>
         <label class="field"><span>Style</span>
           <select data-font>
-            <option value="Segoe Script">Segoe Script</option>
-            <option value="Ink Free">Ink Free</option>
-            <option value="Lucida Handwriting">Lucida Handwriting</option>
-            <option value="Segoe Print">Segoe Print</option>
-            <option value="Brush Script MT">Brush Script</option>
+            ${HANDWRITING_FONTS.map(([family, label]) => `<option value="${family}">${label}</option>`).join("")}
           </select></label>
         <canvas class="signature-pad" data-typed width="1040" height="240"></canvas>
       </div>
@@ -657,6 +654,7 @@ const SHORTCUTS = [
   ]],
   ["Help", [["This list", "F1 or ?"]]],
 ];
+for (const [, rows] of SHORTCUTS) for (const row of rows) row[1] = keyLabel(row[1]);
 
 export async function shortcutsDialog() {
   if (document.querySelector("dialog[open]")) return;
@@ -735,7 +733,7 @@ export async function printDialog(ctx) {
           </div>
           <label class="field"><span>Orientation</span>
             <select data-orientation><option value="auto">Automatic</option><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label>
-          <button type="button" class="link-button" data-system>Use the Windows print dialog instead…</button>
+          <button type="button" class="link-button" data-system>Use the ${OS_NAME} print dialog instead…</button>
         </div>
         <div class="print-preview"><canvas data-preview></canvas><span class="dialog-note" data-preview-label></span></div>
       </div>`,
@@ -758,7 +756,7 @@ export async function printDialog(ctx) {
       setValidator(() => {
         const copies = Number(q("[data-copies]").value);
         if (!(copies >= 1 && copies <= 99)) throw new Error("Copies must be between 1 and 99.");
-        if (!useSystemDialog && !q("[data-printer]").value) throw new Error("Choose a printer, or use the Windows print dialog.");
+        if (!useSystemDialog && !q("[data-printer]").value) throw new Error(`Choose a printer, or use the ${OS_NAME} print dialog.`);
         dialog.indices = chosenIndices();
       });
 

@@ -1,3 +1,5 @@
+import { OS_NAME } from "./platform.js";
+
 const $ =(id) => document.getElementById(id);
 const PRINT_RESOLUTION = 150;
 
@@ -111,7 +113,7 @@ export class Presentation {
 
 // Renders the chosen pages (with markup and form entries) and prints them.
 // options: { indices, deviceName, copies, color, orientation: "auto" | "portrait" | "landscape" }.
-// Without a deviceName the Windows print dialog is shown instead.
+// Without a deviceName the system print dialog is shown instead.
 export async function printDocument(ctx, options = {}) {
   const { app } = ctx;
   const doc = app.doc;
@@ -137,7 +139,7 @@ export async function printDocument(ctx, options = {}) {
     }
     const orientation = options.orientation ?? "auto";
     const landscape = orientation === "landscape" || (orientation === "auto" && pages.every((p) => p.width > p.height));
-    ctx.setMessage(options.deviceName ? `Sending to ${options.deviceName}…` : "Opening the Windows print dialog…", { sticky: true });
+    ctx.setMessage(options.deviceName ? `Sending to ${options.deviceName}…` : `Opening the ${OS_NAME} print dialog…`, { sticky: true });
     const result = await window.glance.printPages({
       title: doc.filePath.split(/[\\/]/).pop(),
       pages,

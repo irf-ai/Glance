@@ -31,7 +31,9 @@ contextBridge.exposeInMainWorld("glance", {
   confirmDiscard: () => ipcRenderer.invoke("app:confirm-discard"),
   setDocument: (filePath) => ipcRenderer.send("doc:opened", filePath),
   setDirty: (dirty) => ipcRenderer.send("doc:dirty", dirty),
-  pathForFile: (file) => webUtils.getPathForFile(file),
+  // webUtils doesn't exist in Electron 26 (the legacy macOS build); File.path does.
+  pathForFile: (file) => (webUtils ? webUtils.getPathForFile(file) : file.path),
+  platform: process.platform,
   onMenu: (callback) => ipcRenderer.on("menu", (_event, action) => callback(action)),
   onOpenFile: (callback) => ipcRenderer.on("open-file", (_event, filePath) => callback(filePath)),
 });

@@ -1,6 +1,6 @@
 # Glance
 
-A Windows viewer for PDFs and images, modelled on the everyday features of
+A Windows and macOS viewer for PDFs and images, modelled on the everyday features of
 macOS Preview. It's an independent app written from scratch. It contains no
 Apple code, artwork or branding.
 
@@ -64,7 +64,7 @@ Apple code, artwork or branding.
 - Passwords: open password-protected PDFs, and save copies protected with a
   password and printing/copying/editing restrictions (AES-256). Glance honours
   the restrictions of the PDFs it opens.
-- Print (Ctrl+P) with markup and form entries, through the Windows print
+- Print (Ctrl+P) with markup and form entries, through Glance's own or the system print
   dialog.
 - View modes: two-page spreads (Ctrl+2), dark pages (Ctrl+Shift+D), a page
   number box in the status bar (Ctrl+G), and full-screen presentation (F5).
@@ -74,7 +74,7 @@ Apple code, artwork or branding.
   pages without text become pictures.
 - Saved signatures with names, under My signatures in Add signature.
 - Drag pages, images or the document name between Glance windows, drop files
-  from Explorer onto the page list, and drop either into the Combine list.
+  from Explorer or Finder onto the page list, and drop either into the Combine list.
 - Paste a picture onto the page (Ctrl+V), copy the page as a picture
   (Ctrl+Shift+C), and see every shortcut with F1 or ?.
 
@@ -88,6 +88,7 @@ Glance never overwrites the file you opened. Export always asks where to save.
 
 ## System requirements
 
+**Windows**
 - 64-bit Windows 10 or Windows 11 (Intel/AMD). Windows 11 on ARM also works.
 - Nothing else to install. Glance includes everything it needs, so it doesn't
   need Java, a separate JavaScript runtime or the Visual C++ redistributable.
@@ -96,10 +97,28 @@ Glance never overwrites the file you opened. Export always asks where to save.
 The installer stops with an explanation on 32-bit Windows, Windows 7/8.1 and
 Windows 10 on ARM, where Glance can't run.
 
+**macOS**
+
+| Your Mac | Download |
+|---|---|
+| macOS 13 Ventura or later, Apple Silicon (M1 and later) | `Glance-<version>-mac-arm64.dmg` |
+| macOS 13 Ventura or later, Intel | `Glance-<version>-mac-x64.dmg` |
+| macOS 10.13 High Sierra to 12 Monterey (Intel) | `Glance-<version>-mac-legacy-x64.dmg` |
+
+The legacy build uses an older Electron (26) that no longer gets security
+fixes. Use it only on a Mac that can't update to macOS 13, and be careful
+with PDFs from people you don't know.
+
+Open the .dmg and drag Glance to Applications. Glance isn't notarized by
+Apple, so the first time you open it macOS says it can't check it. On
+macOS 10.13 to 14, Control-click Glance in Applications and choose Open. On
+macOS 15 and later, open System Settings › Privacy & Security and choose
+Open Anyway.
+
 ## If Glance crashes
 
-- Glance keeps a log at `%APPDATA%Glancelogsglance.log`
-  (Help › Open Log Folder).
+- Glance keeps a log at `%APPDATA%\Glance\logs\glance.log` on Windows and
+  `~/Library/Logs/Glance/glance.log` on a Mac (Help › Open Log Folder).
 - If the graphics driver crashes, Glance switches to safe graphics and
   restarts by itself. You can also choose Help › Restart with Safe Graphics,
   or start it with `Glance.exe --safe-mode`.
@@ -114,6 +133,9 @@ npm install
 npm start
 ```
 
+`npm run start:legacy` runs it on Electron 26 instead, the version the legacy
+Mac build uses, so you can check that older Macs will work.
+
 ## Build the installer
 
 ```
@@ -121,6 +143,16 @@ npm run dist
 ```
 
 The installer is written to `dist/Glance Setup <version>.exe`.
+
+The Mac builds have to be made on a Mac:
+
+```
+npm run dist:mac
+npm run dist:mac-legacy
+```
+
+Without a Mac, use the **Build macOS** workflow on GitHub (Actions › Build
+macOS › Run workflow). The .dmg files appear under the run's Artifacts.
 
 ## Known limits
 

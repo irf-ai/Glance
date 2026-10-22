@@ -943,7 +943,7 @@ body.drag-over .viewer {
   border-bottom-width: 2px;
   border-radius: 4px;
   background: var(--bg);
-  font: 12px "Segoe UI", sans-serif;
+  font: 12px "Segoe UI", system-ui, sans-serif;
   white-space: nowrap;
 }
 

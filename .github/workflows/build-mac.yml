@@ -1,0 +1,32 @@
+# Builds the macOS disk images. They have to be built on a Mac, so this runs
+# on GitHub's macOS machines. Start it from the Actions tab (Run workflow) or
+# by pushing a tag like v1.4.0; the .dmg files appear under the run's Artifacts.
+name: Build macOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  mac:
+    runs-on: macos-14
+    env:
+      # No Apple Developer ID: the apps are ad-hoc signed and not notarized.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: macOS 13 and later (Apple Silicon and Intel)
+        run: npm run dist:mac -- --publish never
+      - name: macOS 10.13 to 12 (Intel, legacy build)
+        run: npm run dist:mac-legacy -- --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: glance-mac
+          path: dist/*.dmg
+          if-no-files-found: error

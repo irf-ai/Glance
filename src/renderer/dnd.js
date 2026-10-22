@@ -42,7 +42,7 @@ export function readDrop(transfer, { includeOwn = false } = {}) {
     }
   }
   for (const file of transfer.files) {
-    const filePath = window.glance.pathForFile(file);
+    const filePath = window.glance.pathForFile(file) || file.path;
     if (filePath && SUPPORTED.test(filePath)) sources.push({ path: filePath, label: filePath.split(/[\\/]/).pop() });
   }
   return sources;

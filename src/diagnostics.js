@@ -42,6 +42,11 @@ function writeSettings(settings) {
   }
 }
 
+// "Windows 10.0.26200" or "macOS 14.5".
+function osLabel() {
+  return process.platform === "darwin" ? `macOS ${process.getSystemVersion()}` : `Windows ${os.release()}`;
+}
+
 function describe(err) {
   return err?.stack || err?.message || String(err);
 }
@@ -52,7 +57,7 @@ function setupDiagnostics() {
   safeGraphics = process.argv.includes("--safe-mode") || Boolean(readSettings().safeGraphics);
   if (safeGraphics) app.disableHardwareAcceleration();
   log(
-    `Glance ${app.getVersion()} starting · Electron ${process.versions.electron} · Windows ${os.release()} ${process.arch}` +
+    `Glance ${app.getVersion()} starting · Electron ${process.versions.electron} · ${osLabel()} ${process.arch}` +
       `${safeGraphics ? " · safe graphics" : ""}`,
   );
 
@@ -141,7 +146,7 @@ function showAbout(win) {
       "View, mark up and convert PDFs and images.",
       "",
       `Electron ${process.versions.electron} · Chromium ${process.versions.chrome} · Node.js ${process.versions.node}`,
-      `Windows ${os.release()} (${process.arch})`,
+      `${osLabel()} (${process.arch})`,
       `Graphics: ${safeGraphics ? "safe (software)" : "hardware accelerated"}`,
       `Log: ${logFile()}`,
     ].join("\n"),
