@@ -1,11 +1,13 @@
 # Builds the macOS disk images. They have to be built on a Mac, so this runs
-# on GitHub's macOS machines. Start it from the Actions tab (Run workflow) or
-# by pushing a tag like v1.4.0; the .dmg files appear under the run's Artifacts.
+# on GitHub's macOS machines. It runs on every push to macos-support, on tags
+# like v1.4.0, and (once this file is on main) from Actions › Run workflow.
+# The .dmg files appear under the run's Artifacts.
 name: Build macOS
 
 on:
   workflow_dispatch:
   push:
+    branches: ["macos-support"]
     tags: ["v*"]
 
 jobs:
